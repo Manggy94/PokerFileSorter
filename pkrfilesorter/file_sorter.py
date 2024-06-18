@@ -12,6 +12,16 @@ class FileSorter:
         destination_dir (str): The destination directory
 
     Methods:
+        get_source_files: Get all txt files in the source directory and its subdirectories
+        get_date: Get the date of the file
+        get_destination_path: Get the destination path of the file
+        get_source_path: Get the absolute source directory path of the file
+        check_file_exists: Check if the file already exists in the destination directory
+        copy_files: Copy all files from the source directory to the destination directory
+
+    Examples:
+        file_sorter = FileSorter("source_dir", "destination_dir")
+        file_sorter.copy_files()
     """
     def __init__(self, source_dir: str, destination_dir: str):
         self.source_dir = source_dir
