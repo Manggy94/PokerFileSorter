@@ -31,13 +31,13 @@ setup(
     description="A package to sort poker files in adapted directories",
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
-    url="https://github.com/manggy94/",
+    url="https://github.com/manggy94/PokerFileSorter",
     project_urls={
         "Bug Tracker": "https://github.com/manggy94//issues",
+        "Documentation": "https://pkrfilesorter.readthedocs.io/en/latest/"
     },
     classifiers=classifiers,
-    package_dir={"": "pkrfilesorter"},
     packages=find_packages(where="pkrfilesorter"),
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     install_requires=install_requires
 )
