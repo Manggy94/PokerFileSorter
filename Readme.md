@@ -1,4 +1,10 @@
-# 
+# PokerFileSorter
+
+
+[![Documentation Status](https://readthedocs.org/projects/pkrfilesorter/badge/?version=latest)](https://pkrfilesorter.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/pkrfilesorter.svg)](https://badge.fury.io/py/pkrfilesorter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Description
 A package to sort poker files in adapted directories
 
@@ -9,6 +15,8 @@ PokerFileSorter is a simple tool to sort poker files in adapted directories.
 - [Description](#description)
 - [Getting Started](#getting-started)
 - [Usage](#usage)
+- [Documentation](#documentation)
+- [License](#license)
 
 ## Getting Started
 
@@ -47,7 +55,15 @@ SOURCE_DIR="path/to/poker/history/dir"
 DESTINATION_DIR="path/to/sorted/dir"
 ```
 
-En cli:
+Then, in the command line:
 ```sh
 python -m pkrfilesorter.main
 ```
+
+## Documentation
+
+Read the doc on [ReadTheDocs](https://pkrfilesorter.readthedocs.io/en/latest/)
+
+## License
+
+This project is licensed under the *MIT* license. See the [LICENSE](LICENSE.txt) file for more details.
