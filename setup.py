@@ -4,13 +4,7 @@ import json
 
 
 install_requires = [
-    "parsedatetime",
-    "cached-property",
-    "numpy",
-    "pandas",
-    "pytest",
-    "coverage",
-    "pytest-cov"
+    "python-dotenv",
 ]
 
 classifiers = [
@@ -29,7 +23,7 @@ def get_version():
         return f"{version['major']}.{version['minor']}.{version['patch']}"
 
 
-setuptools.setup(
+setup(
     name="pkrfilesorter",
     version=get_version(),
     author="Alexandre MANGWA",
@@ -43,7 +37,7 @@ setuptools.setup(
     },
     classifiers=classifiers,
     package_dir={"": "pkrfilesorter"},
-    packages=setuptools.find_packages(where="pkrfilesorter"),
+    packages=find_packages(where="pkrfilesorter"),
     python_requires=">=3.9",
     install_requires=install_requires
 )
