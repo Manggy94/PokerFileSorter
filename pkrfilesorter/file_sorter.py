@@ -34,9 +34,20 @@ class FileSorter:
         Returns:
             files_dict (list[dict]): A list of dictionaries containing the root directory and filename of the files
         """
-        files_dict = [{"root": root, "filename": file} for root, _, files in os.walk(self.source_dir)
-                for file in files if file.endswith(".txt")]
+        files_dict = [{"root": root, "filename": file}
+                      for root, _, files in os.walk(self.source_dir) for file in files if file.endswith(".txt")]
         return files_dict
+
+    def correct_source_files(self) -> list[dict]:
+        files_dict = self.get_source_files()
+        corrupted_files = [file for file in files_dict if file.get("filename").startswith("summary")]
+        # Change the filename of the corrupted files
+        for file in corrupted_files:
+            new_filename = file.get("filename")[7:]
+            base_path = os.path.join(file.get("root"), file.get("filename"))
+            new_path = os.path.join(file.get("root"), new_filename)
+            os.rename(base_path, new_path)
+            print(f"File {base_path} renamed to {new_filename}")
 
     @staticmethod
     def get_date(filename: str) -> str:
@@ -102,10 +113,16 @@ class FileSorter:
             filename = file.get("filename")
             source_path = os.path.join(file_root, filename)
             destination_path = self.get_destination_path(filename)
-            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-            if not self.check_file_exists(filename):
+            if "positioning_file" not in filename:
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            if not (self.check_file_exists(filename) or "positioning_file" in filename):
                 with open(source_path, "r", encoding="utf-8") as source_file:
                     with open(destination_path, "w", encoding="utf-8") as destination_file:
                         destination_file.write(source_file.read())
                 print(f"File {filename} copied to {destination_path}")
 
+
+if __name__ == "__main__":
+    from pkrfilesorter.config import SOURCE_DIR, DESTINATION_DIR
+    sorter = FileSorter(SOURCE_DIR, DESTINATION_DIR)
+    sorter.correct_source_files()
