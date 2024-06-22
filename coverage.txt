@@ -2,7 +2,7 @@ Name                           Stmts   Miss  Cover
 --------------------------------------------------
 pkrfilesorter/__init__.py          0      0   100%
 pkrfilesorter/config.py            8      8     0%
-pkrfilesorter/file_sorter.py      35     35     0%
+pkrfilesorter/file_sorter.py      49     49     0%
 pkrfilesorter/main.py             10     10     0%
 --------------------------------------------------
-TOTAL                             53     53     0%
+TOTAL                             67     67     0%
