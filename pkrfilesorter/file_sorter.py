@@ -39,6 +39,9 @@ class FileSorter:
         return files_dict
 
     def correct_source_files(self) -> list[dict]:
+        """
+        Correct the corrupted files in the source directory
+        """
         files_dict = self.get_source_files()
         corrupted_files = [file for file in files_dict if file.get("filename").startswith("summary")]
         # Change the filename of the corrupted files
@@ -108,14 +111,16 @@ class FileSorter:
         """
         Copy all files from the source directory to the destination directory
         """
+
         for file in self.get_source_files():
             file_root = file.get("root")
             filename = file.get("filename")
             source_path = os.path.join(file_root, filename)
             destination_path = self.get_destination_path(filename)
-            if "positioning_file" not in filename:
+            copy_condition = "positioning_file" not in filename and "omaha" not in filename and "play" not in filename
+            if copy_condition:
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-            if not (self.check_file_exists(filename) or "positioning_file" in filename):
+            if not self.check_file_exists(filename) and copy_condition:
                 with open(source_path, "r", encoding="utf-8") as source_file:
                     with open(destination_path, "w", encoding="utf-8") as destination_file:
                         destination_file.write(source_file.read())

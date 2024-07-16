@@ -10,6 +10,7 @@ if __name__ == "__main__":
     print(f"Copying files from '{SOURCE_DIR}' to '{DESTINATION_DIR}'")
     try:
         file_sorter = FileSorter(SOURCE_DIR, DESTINATION_DIR)
+        file_sorter.correct_source_files()
         file_sorter.copy_files()
         print("Files copied successfully")
     except Exception as e:
