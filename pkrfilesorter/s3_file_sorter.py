@@ -1,7 +1,7 @@
 import boto3
 import os
 from botocore.exceptions import NoCredentialsError, ClientError
-from typing import List, Dict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class S3FileSorter:
@@ -13,7 +13,7 @@ class S3FileSorter:
         self.destination_bucket = destination_bucket
         self.s3 = boto3.client('s3')
 
-    def get_source_files(self) ->list[dict]:
+    def get_source_files(self) -> list[dict]:
         """
         Get all txt files in the source directory and its subdirectories
         """
@@ -63,23 +63,33 @@ class S3FileSorter:
         except ClientError:
             return False
 
+    def upload_file(self, file: dict):
+        """
+        Upload a file to the S3 bucket
+        """
+        file_root = file.get("root")
+        filename = file.get("filename")
+        source_path = os.path.join(file_root, filename)
+        destination_key = self.get_destination_key(filename)
+        copy_condition = "positioning_file" not in filename and "omaha" not in filename and "play" not in filename
+        if not self.check_file_exists(destination_key) and copy_condition:
+            try:
+                self.s3.upload_file(source_path, self.destination_bucket, destination_key)
+                print(f"File {source_path} copied to s3://{self.destination_bucket}/{destination_key}")
+            except NoCredentialsError:
+                print("Credentials not available")
+            except ClientError as e:
+                print(f"An error occurred while uploading {filename}: {e}")
+        else:
+            print(f"File {destination_key} already exists in the bucket or does not meet the copy condition")
+
     def upload_files(self):
         """
         Upload files from the source directory to the S3 bucket
         """
-        for file in self.get_source_files():
-            file_root = file.get("root")
-            filename = file.get("filename")
-            source_path = os.path.join(file_root, filename)
-            destination_key = self.get_destination_key(filename)
-            copy_condition = "positioning_file" not in filename and "omaha" not in filename and "play" not in filename
-            if not self.check_file_exists(destination_key) and copy_condition:
-                try:
-                    self.s3.upload_file(source_path, self.destination_bucket, destination_key)
-                    print(f"File {source_path} copied to s3://{self.destination_bucket}/{destination_key}")
-                except NoCredentialsError:
-                    print("Credentials not available")
-                except ClientError as e:
-                    print(f"An error occurred while uploading {filename}: {e}")
-            else:
-                print(f"File {destination_key} already exists in the bucket")
+        files_to_upload = self.get_source_files()
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            future_to_file = {executor.submit(self.upload_file, file): file for file in files_to_upload}
+            for future in as_completed(future_to_file):
+                result = future.result()
+                print(result)

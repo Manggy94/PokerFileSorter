@@ -4,7 +4,7 @@ pkrfilesorter/__init__.py             0      0   100%
 pkrfilesorter/config.py              12     12     0%
 pkrfilesorter/file_sorter.py         50     50     0%
 pkrfilesorter/main.py                11     11     0%
-pkrfilesorter/s3_file_sorter.py      53     53     0%
+pkrfilesorter/s3_file_sorter.py      59     59     0%
 pkrfilesorter/upload.py              12     12     0%
 -----------------------------------------------------
-TOTAL                               138    138     0%
+TOTAL                               144    144     0%
