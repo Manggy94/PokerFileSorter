@@ -1,5 +1,6 @@
 import boto3
 import os
+import re
 from botocore.exceptions import NoCredentialsError, ClientError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -36,23 +37,50 @@ class S3FileSorter:
             os.replace(base_path, new_path)
             print(f"File {base_path} renamed to {new_filename}")
 
+    def get_file_info(self, file_dict: dict):
+        file_name = file_dict.get("filename")
+        file_root = file_dict.get("root")
+        file_path = os.path.join(file_root, file_name)
+        info_dict = self.get_info_from_filename(file_name)
+        info_dict["file_path"] = file_path
+        info_dict["file_name"] = file_name
+        return info_dict
+
     @staticmethod
-    def get_date(filename: str) -> str:
+    def get_info_from_filename(filename: str) -> dict:
         """
-        Get the date of the file
+        Get the date and destination key of a file
         """
+        tournament_pattern = re.compile(r"\((\d+)\)_")
+        cash_game_pattern = re.compile(r"_([\w\s]+)(\d{2})_")
         date_str = filename.split("_")[0]
         date_path = f"{date_str[:4]}/{date_str[4:6]}/{date_str[6:]}"
-        return date_path
-
-    def get_destination_key(self, filename: str) -> str:
-        """
-        Get the destination key of the file
-        """
-        date_path = self.get_date(filename)
         file_type = "summaries" if "summary" in filename else "histories/raw"
-        destination_key = f"data/{file_type}/{date_path}/{filename}"
-        return destination_key
+        match1 = tournament_pattern.search(filename)
+        match2 = cash_game_pattern.search(filename)
+        is_play = "play" in filename
+        is_omaha = "omaha" in filename
+        is_positioning = "positioning" in filename
+        if match1:
+            tournament_id = match1.group(1)
+            destination_key = f"data/{file_type}/{date_path}/{tournament_id}.txt"
+            is_tournament = True
+        elif match2:
+            table_name = match2.group(1).strip().replace(" ", "_")
+            table_id = match2.group(2)
+            destination_key = f"data/{file_type}/{date_path}/cash/{table_name}/{table_id}.txt"
+            is_tournament = False
+        else:
+            destination_key = is_tournament = None
+        file_info = {
+            "date": date_path,
+            "destination_key": destination_key,
+            "is_tournament": is_tournament,
+            "is_play": is_play,
+            "is_omaha": is_omaha,
+            "is_positioning": is_positioning,
+        }
+        return file_info
 
     def check_file_exists(self, key: str) -> bool:
         """
@@ -100,19 +128,18 @@ class S3FileSorter:
             file.write(f"{filename}\n")
         print(f"File {filename} added to {file_location}")
 
-    def get_src_and_dest(self, file: dict):
-        file_root = file.get("root")
-        filename = file.get("filename")
-        source_path = os.path.join(file_root, filename)
-        destination_key = self.get_destination_key(filename)
-        return source_path, destination_key
-
     def upload_file(self, file: dict, check_exists: bool = False):
+        file_info = self.get_file_info(file)
         uploaded_files = self.get_uploaded_files() if check_exists else []
         error_files = self.get_error_files()
-        source_path, destination_key = self.get_src_and_dest(file)
-        filename = file.get("filename")
-        error_condition = "positioning_file" in filename or "omaha" in filename or "play" in filename
+        is_positioning = file_info.get("is_positioning")
+        is_play = file_info.get("is_play")
+        is_omaha = file_info.get("is_omaha")
+        other_than_tournament = not file_info.get("is_tournament")
+        source_path = file_info.get("file_path")
+        destination_key = file_info.get("destination_key")
+        filename = file_info.get("file_name")
+        error_condition = any((is_play, is_omaha, is_positioning, other_than_tournament))
         copy_condition = filename not in uploaded_files + error_files
         if copy_condition:
             print(f"Copying file {filename} to s3://{self.destination_bucket}/{destination_key}")
@@ -124,7 +151,7 @@ class S3FileSorter:
                 print(f"Error: File {filename} already exists in the bucket")
             else:
                 try:
-                    self.s3.upload_new_file(source_path, self.destination_bucket, destination_key)
+                    self.s3.upload_file(source_path, self.destination_bucket, destination_key)
                     print(f"File {source_path} copied to s3://{self.destination_bucket}/{destination_key}")
                     self.add_to_uploaded_files(filename)
                 except NoCredentialsError:
@@ -149,8 +176,8 @@ class S3FileSorter:
         Upload files from the source directory to the S3 bucket
         """
         self.correct_source_files()
-        files_to_upload = self.get_source_files()[:100]
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        files_to_upload = self.get_source_files()[::-1][:10]
+        with ThreadPoolExecutor(max_workers=6) as executor:
             future_to_file = {executor.submit(self.reupload_file, file): file for file in files_to_upload}
             for future in as_completed(future_to_file):
                 future.result()
@@ -158,7 +185,7 @@ class S3FileSorter:
 
     def upload_new_files(self):
         self.correct_source_files()
-        files_to_upload = self.get_source_files()
+        files_to_upload = self.get_source_files()[::-1][:10]
         with ThreadPoolExecutor(max_workers=1) as executor:
             future_to_file = {executor.submit(self.upload_new_file, file): file for file in files_to_upload}
             for future in as_completed(future_to_file):
