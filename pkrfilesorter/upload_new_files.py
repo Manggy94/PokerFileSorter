@@ -6,11 +6,12 @@ from pkrfilesorter.config import SOURCE_DIR, BUCKET_NAME, DESTINATION_DIR
 
 
 if __name__ == "__main__":
-    print(f"Uploading new files from '{SOURCE_DIR}' to '{BUCKET_NAME}'")
+    # print(f"Uploading new files from '{SOURCE_DIR}' to '{BUCKET_NAME}'")
     file_sorter = S3FileSorter(SOURCE_DIR, BUCKET_NAME, DESTINATION_DIR)
     print("File sorter initialized successfully")
     try:
-        file_sorter.upload_new_files()
+        file_sorter.upload_files()
         print("Files copied successfully")
     except Exception as e:
         print(f"An error occurred: {e}")
+
