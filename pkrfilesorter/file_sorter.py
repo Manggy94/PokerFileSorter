@@ -1,6 +1,7 @@
 """This module contains the FileSorter class which is responsible for copying files from a source directory to a
 specific destination directory."""
 import os
+import re
 
 
 class FileSorter:
@@ -8,8 +9,8 @@ class FileSorter:
     A class to sort files from a source directory to a destination directory
 
     Attributes:
+        data_dir (str): The data directory
         source_dir (str): The source directory
-        destination_dir (str): The destination directory
 
     Methods:
         get_source_files: Get all txt files in the source directory and its subdirectories
@@ -23,9 +24,8 @@ class FileSorter:
         file_sorter = FileSorter("source_dir", "destination_dir")
         file_sorter.copy_files()
     """
-    def __init__(self, source_dir: str, destination_dir: str):
-        self.source_dir = source_dir
-        self.destination_dir = destination_dir
+    source_dir: str
+    data_dir: str
 
     def get_source_files(self) -> list[dict]:
         """
@@ -38,7 +38,10 @@ class FileSorter:
                       for root, _, files in os.walk(self.source_dir) for file in files if file.endswith(".txt")]
         return files_dict
 
-    def correct_source_files(self) -> list[dict]:
+    def correct_source_files(self):
+        """
+        Correct the corrupted files in the source directory
+        """
         files_dict = self.get_source_files()
         corrupted_files = [file for file in files_dict if file.get("filename").startswith("summary")]
         # Change the filename of the corrupted files
@@ -46,83 +49,76 @@ class FileSorter:
             new_filename = file.get("filename")[7:]
             base_path = os.path.join(file.get("root"), file.get("filename"))
             new_path = os.path.join(file.get("root"), new_filename)
-            os.rename(base_path, new_path)
+            os.replace(base_path, new_path)
             print(f"File {base_path} renamed to {new_filename}")
 
+    def get_file_info(self, file_dict: dict):
+        file_name = file_dict.get("filename")
+        file_root = file_dict.get("root")
+        file_path = os.path.join(file_root, file_name)
+        info_dict = self.get_info_from_filename(file_name)
+        info_dict["file_path"] = file_path
+        info_dict["file_name"] = file_name
+        return info_dict
+
     @staticmethod
-    def get_date(filename: str) -> str:
+    def get_info_from_filename(filename: str) -> dict:
         """
-        Get the date of the file
-
-        Args:
-            filename (str): The filename of the file
-
-        Returns:
-            date_path (str): The date path of the file
+        Get the date and destination key of a file
         """
+        tournament_pattern = re.compile(r"\((\d+)\)_")
+        cash_game_pattern = re.compile(r"_([\w\s]+)(\d{2})_")
+        cash_game_pattern2 = re.compile(r"(\d{4})(\d{2})(\d{2})_([A-Za-z]+)")
         date_str = filename.split("_")[0]
         date_path = f"{date_str[:4]}/{date_str[4:6]}/{date_str[6:]}"
-        return date_path
-
-    def get_destination_path(self, filename: str) -> str:
-        """
-        Get the destination path of the file
-
-        Args:
-            filename (str): The filename of the file
-
-        Returns:
-            destination_path (str): The destination path of the file
-        """
-        date_path = self.get_date(filename)
         file_type = "summaries" if "summary" in filename else "histories/raw"
-        destination_path = os.path.join(self.destination_dir, file_type, date_path, filename)
-        return destination_path
+        match1 = tournament_pattern.search(filename)
+        match2 = cash_game_pattern.search(filename)
+        match3 = cash_game_pattern2.search(filename)
+        is_play = "play" in filename
+        is_omaha = "omaha" in filename
+        is_positioning = "positioning" in filename
+        if match1:
+            tournament_id = match1.group(1)
+            destination_key = f"data/{file_type}/{date_path}/{tournament_id}.txt"
+            is_tournament = True
+        elif match2:
+            table_name = match2.group(1).strip().replace(" ", "_")
+            table_id = match2.group(2)
+            destination_key = f"data/{file_type}/{date_path}/cash/{table_name}/{table_id}.txt"
+            is_tournament = False
+        elif match3:
 
-    def get_source_path(self, filename: str) -> str:
+            table_name = match3.group(4).strip()
+            table_id = "000000000"
+            destination_key = f"data/{file_type}/{date_path}/cash/{table_name}/{table_id}.txt"
+            is_tournament = False
+        else:
+            destination_key = is_tournament = None
+        file_info = {
+            "date": date_path,
+            "destination_key": destination_key,
+            "is_tournament": is_tournament,
+            "is_play": is_play,
+            "is_omaha": is_omaha,
+            "is_positioning": is_positioning,
+        }
+        return file_info
+
+    def get_error_files(self) -> list:
         """
-        Get the absolute source directory path of the file
-
-        Args:
-            filename (str): The filename of the file
-
-        Returns:
-            source_path (str): The source path of the file
+        Get the files listed in the error_files.txt file
         """
-        source_path = os.path.join(self.source_dir, filename)
-        return source_path
+        file_location = os.path.join(self.data_dir, "error_files.txt")
+        with open(file_location, "r") as file:
+            error_files = file.read().splitlines()
+        return error_files
 
-    def check_file_exists(self, filename: str) -> bool:
+    def add_to_error_files(self, filename: str):
         """
-        Check if the file already exists in the destination directory
-
-        Args:
-            filename (str): The filename to check
-
-        Returns:
-            (bool): True if the file already exists, False otherwise
+        Add a filename to the error_files.txt file
         """
-        return os.path.exists(self.get_destination_path(filename))
-
-    def copy_files(self):
-        """
-        Copy all files from the source directory to the destination directory
-        """
-        for file in self.get_source_files():
-            file_root = file.get("root")
-            filename = file.get("filename")
-            source_path = os.path.join(file_root, filename)
-            destination_path = self.get_destination_path(filename)
-            if "positioning_file" not in filename:
-                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-            if not (self.check_file_exists(filename) or "positioning_file" in filename):
-                with open(source_path, "r", encoding="utf-8") as source_file:
-                    with open(destination_path, "w", encoding="utf-8") as destination_file:
-                        destination_file.write(source_file.read())
-                print(f"File {filename} copied to {destination_path}")
-
-
-if __name__ == "__main__":
-    from pkrfilesorter.config import SOURCE_DIR, DESTINATION_DIR
-    sorter = FileSorter(SOURCE_DIR, DESTINATION_DIR)
-    sorter.correct_source_files()
+        file_location = os.path.join(self.data_dir, "error_files.txt")
+        with open(file_location, "a") as file:
+            file.write(f"{filename}\n")
+        print(f"File {filename} added to {file_location}")
