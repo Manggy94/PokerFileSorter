@@ -33,7 +33,11 @@ class S3FileSorter(AbstractFileSorter):
         Write a source file to a raw file
         """
         try:
-            self.s3.upload_file(source_key, self.bucket_name, raw_key)
+            with open(source_key, 'r', encoding='utf-8') as source_file:
+                source_content = source_file.read()
+            source_content = source_content.replace("\\u20ac", "€")
+            self.s3.put_object(Bucket=self.bucket_name, Key=raw_key, Body=source_content)
+            #self.s3.upload_file(source_key, self.bucket_name, raw_key)
             print(f"File {source_key} written to s3://{raw_key}")
             self.add_to_sorted_files(source_key)
         except NoCredentialsError:

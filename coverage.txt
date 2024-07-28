@@ -1,11 +1,17 @@
-Name                                 Stmts   Miss  Cover
---------------------------------------------------------
-pkrfilesorter/__init__.py                0      0   100%
-pkrfilesorter/config.py                  9      9     0%
-pkrfilesorter/copy_new_files.py          8      8     0%
-pkrfilesorter/file_sorter.py            66     66     0%
-pkrfilesorter/local_file_sorter.py      75     75     0%
-pkrfilesorter/s3_file_sorter.py         77     77     0%
-pkrfilesorter/upload_new_files.py       11     11     0%
---------------------------------------------------------
-TOTAL                                  246    246     0%
+Name                                         Stmts   Miss  Cover
+----------------------------------------------------------------
+pkrfilesorter/__init__.py                        0      0   100%
+pkrfilesorter/runs/__init__.py                   0      0   100%
+pkrfilesorter/runs/local/__init__.py             0      0   100%
+pkrfilesorter/runs/local/sort_files.py           5      5     0%
+pkrfilesorter/runs/local/sort_new_files.py       5      5     0%
+pkrfilesorter/runs/s3/__init__.py                0      0   100%
+pkrfilesorter/runs/s3/sort_files.py              0      0   100%
+pkrfilesorter/runs/s3/sort_new_files.py          0      0   100%
+pkrfilesorter/settings.py                        9      9     0%
+pkrfilesorter/sorters/__init__.py                0      0   100%
+pkrfilesorter/sorters/abstract.py              169    169     0%
+pkrfilesorter/sorters/local.py                  23     23     0%
+pkrfilesorter/sorters/s3.py                     29     29     0%
+----------------------------------------------------------------
+TOTAL                                          240    240     0%

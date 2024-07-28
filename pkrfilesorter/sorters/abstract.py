@@ -49,8 +49,12 @@ class AbstractFileSorter(ABC):
         """
         Correct the corrupted files in the source directory
         """
+        print("Correcting corrupted files in the source directory")
         files_dict = self.list_source_files_dict()
         corrupted_files = [file for file in files_dict if file.get("filename").startswith("summary")]
+        print(f"List of corrupted files:")
+        for file in corrupted_files:
+            print(file.get("filename"))
         # Change the filename of the corrupted files
         for file in corrupted_files:
             new_filename = file.get("filename")[7:]
@@ -209,9 +213,12 @@ class AbstractFileSorter(ABC):
         """
         Upload files from the source directory to the S3 bucket
         """
+        self.merge_files()
         self.correct_source_files()
         self.reset_sorted_files()
+        print("Sorting files from the source directory to the raw directory")
         files_to_sort = self.list_source_files_dict()[::-1]
+        print(f"Number of files to sort: {len(files_to_sort)}")
         with ThreadPoolExecutor() as executor:
             future_to_file = {executor.submit(self.sort_file, file): file for file in files_to_sort}
             for future in as_completed(future_to_file):
@@ -219,10 +226,56 @@ class AbstractFileSorter(ABC):
         print("All files sorted successfully")
 
     def sort_new_files(self):
+        self.merge_files()
         self.correct_source_files()
+        print("Sorting new files from the source directory to the raw directory")
         files_to_sort = self.list_source_files_dict()[::-1]
         with ThreadPoolExecutor() as executor:
             future_to_file = {executor.submit(self.sort_new_file, file): file for file in files_to_sort}
             for future in as_completed(future_to_file):
                 future.result()
         print("All new files sorted successfully")
+
+    def list_files_to_merge(self):
+        """
+        List all the files that need to be joined
+        """
+        files = self.list_source_files_dict()
+        file_info_list = [
+            {
+                "filename": file_dict.get("filename"),
+                "source_key": self.get_file_info(file_dict).get("source_key"),
+                "raw_key_suffix": self.get_info_from_filename(file_dict.get("filename")).get("raw_key_suffix"),
+            }
+            for file_dict in files
+        ]
+        raw_suffixes = [info.get("raw_key_suffix") for info in file_info_list]
+        suffix_to_files_dict = {suffix: [info.get("source_key")
+                                         for info in file_info_list
+                                         if info.get("raw_key_suffix") == suffix]
+                                for suffix in raw_suffixes}
+        files_to_join = {suffix: source_keys
+                         for suffix, source_keys in suffix_to_files_dict.items()
+                         if len(source_keys) > 1}
+        return files_to_join
+
+    def merge_files(self):
+        """
+        Merge files with the same raw key, coming from list_files_to_join
+        """
+        print("Merging files with the same raw key in the source directory")
+        files_to_merge = self.list_files_to_merge()
+        print(f"Number of files to merge: {len(files_to_merge)}")
+        print("List of files to merge:")
+        for raw_key_suffix, source_keys in files_to_merge.items():
+            print(f"Raw key suffix: {raw_key_suffix}")
+            for source_key in source_keys:
+                print(f"Source key: {source_key}")
+        for source_keys in files_to_merge.values():
+            ref_source_key = source_keys[0]
+            with open(ref_source_key, "a") as ref_file:
+                for source_key in source_keys[1:]:
+                    with open(source_key, "r") as file:
+                        ref_file.write(file.read())
+                    os.remove(source_key)
+                    print(f"File {source_key} merged with {ref_source_key}")
