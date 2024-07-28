@@ -8,7 +8,7 @@ class LocalFileSorter(AbstractFileSorter):
     def __init__(self, source_dir: str, data_dir: str):
         self.source_dir = self.correct_source_dir(source_dir)
         self.data_dir = self.correct_source_dir(data_dir)
-        self.sorted_files_record ="copied_files.txt"
+        self.sorted_files_record = "copied_files.txt"
 
     def check_raw_key_exists(self, raw_key: str) -> bool:
         """
@@ -29,14 +29,11 @@ class LocalFileSorter(AbstractFileSorter):
         raw_dir = os.path.dirname(raw_key)
         os.makedirs(raw_dir, exist_ok=True)
         os.chmod(raw_dir, 0o777)
-        with open(source_key, 'r', encoding='latin-1') as source_file:
+        with open(source_key, 'r', encoding='utf-8') as source_file:
             source_content = source_file.read()
-        with open(raw_key, 'w', encoding='latin-1') as raw_file:
+            source_content = source_content.replace("\\u20ac", "€")
+        with open(raw_key, 'w', encoding='utf-8') as raw_file:
             raw_file.write(source_content)
         os.chmod(raw_key, 0o777)
         print(f"File {source_key} written to {raw_key}")
         self.add_to_sorted_files(source_key)
-
-
-
-
