@@ -63,6 +63,20 @@ class AbstractFileSorter(ABC):
             os.replace(base_path, new_path)
             print(f"File {base_path} renamed to {new_filename}")
 
+    @staticmethod
+    def correct_file_content(content_text: str) -> str:
+        """
+        Correct the content of a file
+        """
+        correction_patterns = [
+            {"old": "\\u20ac", "new": "€"},
+            {"old": "\\u00e9", "new": "é"},
+
+        ]
+        for pattern in correction_patterns:
+            content_text = content_text.replace(pattern["old"], pattern["new"])
+        return content_text
+
     def get_file_info(self, file_dict: dict):
         file_name = file_dict.get("filename")
         file_root = file_dict.get("root")

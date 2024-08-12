@@ -4,7 +4,7 @@ from botocore.exceptions import NoCredentialsError, ClientError
 from pkrfilesorter.sorters.abstract import AbstractFileSorter
 
 
-class S3FileSorter(AbstractFileSorter):
+class CloudFileSorter(AbstractFileSorter):
 
     def __init__(self, source_dir: str, data_dir: str, bucket_name: str):
         self.source_dir = source_dir
@@ -35,7 +35,7 @@ class S3FileSorter(AbstractFileSorter):
         try:
             with open(source_key, 'r', encoding='utf-8') as source_file:
                 source_content = source_file.read()
-            source_content = source_content.replace("\\u20ac", "€")
+            source_content = self.correct_file_content(source_content)
             self.s3.put_object(Bucket=self.bucket_name, Key=raw_key, Body=source_content)
             #self.s3.upload_file(source_key, self.bucket_name, raw_key)
             print(f"File {source_key} written to s3://{raw_key}")

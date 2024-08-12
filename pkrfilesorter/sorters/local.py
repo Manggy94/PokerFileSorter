@@ -31,7 +31,7 @@ class LocalFileSorter(AbstractFileSorter):
         os.chmod(raw_dir, 0o777)
         with open(source_key, 'r', encoding='utf-8') as source_file:
             source_content = source_file.read()
-            source_content = source_content.replace("\\u20ac", "€")
+            source_content = self.correct_file_content(source_content)
         with open(raw_key, 'w', encoding='utf-8') as raw_file:
             raw_file.write(source_content)
         os.chmod(raw_key, 0o777)
