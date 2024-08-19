@@ -6,12 +6,13 @@ pkrfilesorter/runs/cloud/__init__.py             0      0   100%
 pkrfilesorter/runs/cloud/sort_files.py           5      5     0%
 pkrfilesorter/runs/cloud/sort_new_files.py       5      5     0%
 pkrfilesorter/runs/local/__init__.py             0      0   100%
+pkrfilesorter/runs/local/correct_files.py        5      5     0%
 pkrfilesorter/runs/local/sort_files.py           5      5     0%
 pkrfilesorter/runs/local/sort_new_files.py       5      5     0%
 pkrfilesorter/settings.py                        9      9     0%
 pkrfilesorter/sorters/__init__.py                0      0   100%
-pkrfilesorter/sorters/abstract.py              175    175     0%
+pkrfilesorter/sorters/abstract.py              258    258     0%
 pkrfilesorter/sorters/cloud.py                  29     29     0%
 pkrfilesorter/sorters/local.py                  23     23     0%
 ----------------------------------------------------------------
-TOTAL                                          256    256     0%
+TOTAL                                          344    344     0%
