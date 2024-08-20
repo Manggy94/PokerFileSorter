@@ -37,7 +37,7 @@ setup(
         "Documentation": "https://pkrfilesorter.readthedocs.io/en/latest/"
     },
     classifiers=classifiers,
-    packages=find_packages(where="pkrfilesorter"),
+    packages=find_packages(exclude=["tests", ".venv", "venv", "venv.*"]),
     python_requires=">=3.10",
     install_requires=install_requires
 )

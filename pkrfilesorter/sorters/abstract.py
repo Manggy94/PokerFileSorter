@@ -12,13 +12,22 @@ class AbstractFileSorter(ABC):
     """
     source_dir: str
     data_dir: str
-    sorted_files_record: str
+    local_data_dir: str
+    parsed_corrections_dir: str
+    sorted_files_record_path: str
+    name_corrections_file_key: str
+    names_to_correct_file_key: str
+    correction_raw_keys_file_key: str
 
     tournament_pattern = re.compile(r"\((\d+)\)_")
 
     @property
     def corrections_dir(self):
         return self.data_dir.replace("data", "corrections")
+
+    @property
+    def error_files_path(self):
+        return os.path.join(self.local_data_dir, "error_files.txt")
 
     @staticmethod
     def correct_source_dir(source_dir: str) -> str:
@@ -74,26 +83,57 @@ class AbstractFileSorter(ABC):
                             for tournament in self.list_source_tournament_history_keys()}
         return tournaments_dict
 
-    def list_correction_keys(self) -> list:
+    @abstractmethod
+    def list_parsed_correction_keys(self) -> list:
         """
         Lists all the parsed files in to correct
 
         """
-        parsed_corrections_dir = os.path.join(self.corrections_dir, "histories", "parsed")
-        correction_keys = [os.path.join(root, filename)
-                           for root, _, files in os.walk(parsed_corrections_dir)
-                           for filename in files if filename.endswith(".json")]
-        return correction_keys
+        pass
 
     def list_correction_original_files(self) -> list:
-        files_to_correct = [self.retrieve_original_file(parsed_key) for parsed_key in self.list_correction_keys()]
+        files_to_correct = [self.retrieve_original_file(parsed_key)
+                            for parsed_key in self.list_parsed_correction_keys()]
         return list(set(files_to_correct))
 
     @staticmethod
-    def get_source_file_content(source_key: str) -> str:
-        with open(source_key, "r", encoding="utf-8") as file:
-            content = file.read()
+    def get_local_file_content(source_path: str) -> str:
+        try:
+            with open(source_path, "r", encoding="utf-8") as file:
+                content = file.read()
+        except UnicodeDecodeError:
+            with open(source_path, "r", encoding="latin-1") as file:
+                content = file.read()
         return content
+
+    @staticmethod
+    def write_local_file(file_path: str, content: str):
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(content)
+
+    @staticmethod
+    def write_local_file_from_list(file_path: str, content: list):
+        with open(file_path, "w", encoding="utf-8") as file:
+            for line in content:
+                file.write(line + "\n")
+
+    @staticmethod
+    def add_to_local_file_from_list(file_path: str, content: list):
+        with open(file_path, "a", encoding="utf-8") as file:
+            for line in content:
+                file.write(line + "\n")
+
+    @abstractmethod
+    def get_file_content(self, file_key: str) -> str:
+        pass
+
+    @abstractmethod
+    def write_file(self, file_key: str, content: str):
+        pass
+
+    @abstractmethod
+    def write_file_from_list(self, file_key: str, content: list):
+        pass
 
     def correct_source_files(self):
         """
@@ -117,9 +157,8 @@ class AbstractFileSorter(ABC):
         """
         Correct the content of a file
         """
-        corrections_file = os.path.join(self.data_dir, "name_corrections.json")
-        with open(corrections_file, "r", encoding="utf-8") as file:
-            corrections_dict = json.load(file)
+        corrections_file_text = self.get_file_content(self.name_corrections_file_key)
+        corrections_dict = json.loads(corrections_file_text)
         correction_patterns = {
                 "\\u20ac": "€",
                 "\\u2013": "–",
@@ -196,19 +235,16 @@ class AbstractFileSorter(ABC):
         """
         Get the files listed in the error_files.txt file
         """
-        file_location = os.path.join(self.data_dir, "error_files.txt")
-        with open(file_location, "r") as file:
-            error_files = file.read().splitlines()
+        error_files_content = self.get_local_file_content(self.error_files_path)
+        error_files = error_files_content.split()
         return error_files
 
     def add_to_error_files(self, source_key: str):
         """
         Add a filename to the error_files.txt file
         """
-        file_location = os.path.join(self.data_dir, "error_files.txt")
-        with open(file_location, "a") as file:
-            file.write(f"{source_key}\n")
-        print(f"File {source_key} added to {file_location}")
+        self.add_to_local_file_from_list(self.error_files_path, [source_key])
+        print(f"File {source_key} added to {self.error_files_path}")
 
     @abstractmethod
     def check_raw_key_exists(self, raw_key: str) -> bool:
@@ -221,28 +257,30 @@ class AbstractFileSorter(ABC):
         """
         Get the files listed in the <sorted_files>.txt file
         """
-        file_location = os.path.join(self.data_dir, self.sorted_files_record)
-        with open(file_location, "r", encoding="utf-8") as file:
-            sorted_files = file.read().splitlines()
+        sorted_files_content = self.get_local_file_content(self.sorted_files_record_path)
+        sorted_files = sorted_files_content.split()
         return sorted_files
     
     def add_to_sorted_files(self, source_key: str):
         """
         Add a filename to the sorted_files.txt file
         """
-        file_location = os.path.join(self.data_dir, self.sorted_files_record)
-        with open(file_location, "a", encoding="utf-8") as file:
-            file.write(f"{source_key}\n")
-        print(f"File {source_key} added to {file_location}")
+        self.add_to_local_file_from_list(self.sorted_files_record_path, [source_key])
+        print(f"File {source_key} added to {self.sorted_files_record_path}")
 
-    def reset_sorted_files(self):
+    def reset_local_file(self, file_path: str):
         """
-        Reset the sorted_files.txt file
+        Reset a local file
         """
-        file_location = os.path.join(self.data_dir, self.sorted_files_record)
-        with open(file_location, "w", encoding="utf-8") as file:
-            file.write("")
-        print(f"{file_location} reset successfully")
+        self.write_local_file(file_path, "")
+        print(f"{file_path} reset successfully")
+
+    def reset_file(self, file_key: str):
+        """
+        Reset a file in the S3 bucket
+        """
+        self.write_file(file_key, "")
+        print(f"{file_key} reset successfully")
 
     @abstractmethod
     def write_source_file_to_raw_file(self, source_key: str, raw_key: str):
@@ -283,7 +321,7 @@ class AbstractFileSorter(ABC):
         """
         self.merge_files()
         self.correct_source_files()
-        self.reset_sorted_files()
+        self.reset_local_file(self.sorted_files_record_path)
         print("Sorting files from the source directory to the raw directory")
         files_to_sort = self.list_source_files_dict()[::-1]
         print(f"Number of files to sort: {len(files_to_sort)}")
@@ -301,16 +339,13 @@ class AbstractFileSorter(ABC):
         list_to_sort_dict = [file for file in all_files
                              if os.path.join(file["root"], file["filename"]) in files_to_sort]
         raw_keys = [self.get_raw_key(self.get_file_info(file).get("raw_key_suffix")) for file in list_to_sort_dict]
-        with open(os.path.join(self.data_dir, "correction_raw_keys.txt"), "w", encoding="utf-8") as file:
-            for raw_key in raw_keys:
-                file.write(f"{raw_key}\n")
-        with open(os.path.join(self.data_dir, "names_to_correct.txt"), "w", encoding="utf-8") as file:
-            file.write("")
+        self.write_file_from_list(self.correction_raw_keys_file_key, raw_keys)
+        self.reset_file(self.names_to_correct_file_key)
         with ThreadPoolExecutor() as executor:
             future_to_file = {executor.submit(self.sort_file, file): file for file in list_to_sort_dict}
             for future in as_completed(future_to_file):
                 future.result()
-        for parsed_file in self.list_correction_keys():
+        for parsed_file in self.list_parsed_correction_keys():
             os.remove(parsed_file)
         print("All files sorted successfully")
 
@@ -385,7 +420,7 @@ class AbstractFileSorter(ABC):
         """
         Find the names of the players that are not correctly parsed
         """
-        file_content = self.get_source_file_content(source_key)
+        file_content = self.get_local_file_content(source_key)
         parser_pattern = r"Seat \d+: ([\w\s.\-&\⌃]{3,12}) \((\d+)(?:, ([\d\.]+)\D)?"
         global_pattern = r"Seat \d+: ((?:(?!\n).)+) \((\d+)(?:, ([\d\.]+)\D)?"
         parser_names = set(data[0] for data in re.findall(parser_pattern, file_content))
@@ -399,32 +434,27 @@ class AbstractFileSorter(ABC):
         """
         print("Saving the names of the players that are not correctly parsed")
         source_keys = self.list_correction_original_files()
-        problematic_names = set.union(*[self.find_problematic_player_names(source_key) for source_key in source_keys])
-        with open(os.path.join(self.data_dir, "names_to_correct.txt"), "w", encoding="utf-8") as file:
-            for name in problematic_names:
-                file.write(f"{name}\n")
+        names = [self.find_problematic_player_names(source_key) for source_key in source_keys]
+        source_keys_set = set.union(*names) if names else set()
+        problematic_names = list(source_keys_set)
+        self.write_file_from_list(self.names_to_correct_file_key, problematic_names)
 
     def set_correction_names(self):
         """
         Set the names of the players that are not correctly parsed
         """
         print("Setting the names of the players that are not correctly parsed")
-        names_to_correct_file = os.path.join(self.data_dir, "names_to_correct.txt")
-        with open(names_to_correct_file, "r", encoding="utf-8") as file:
-            correction_names = file.read().splitlines()
-        corrections_file = os.path.join(self.data_dir, "name_corrections.json")
-        with open(corrections_file, "r", encoding="utf-8") as file:
-            corrections_dict = json.load(file)
-        nb_villains = len(corrections_dict)
-        for i, name in enumerate(correction_names):
-            if name not in corrections_dict.keys():
-                corrections_dict[name] = f"Villain_{i+nb_villains:03}_"
-        json.dump(corrections_dict, open(corrections_file, "w"), indent=4)
+        names_to_correct_content = self.get_file_content(self.names_to_correct_file_key)
+        names_to_correct = names_to_correct_content.split()
+        name_corrections_content = self.get_file_content(self.name_corrections_file_key)
+        name_corrections_dict = json.loads(name_corrections_content)
+        nb_villains = len(name_corrections_dict)
+        for i, name in enumerate(names_to_correct):
+            if name not in name_corrections_dict.keys():
+                name_corrections_dict[name] = f"Villain_{i+nb_villains:03}_"
+        json.dump(name_corrections_dict, open(self.name_corrections_file_key, "w"), indent=4)
 
     def correct_files(self):
         self.save_problematic_names()
         self.set_correction_names()
         self.sort_files_to_correct()
-
-
-
